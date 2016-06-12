@@ -2,7 +2,6 @@
 *.sublime-project*
 *.sublime-workspace*
 old
-*.ipynb
 *.hdf5
 *.csv
 *.txt
