@@ -1,3 +1,4 @@
+from framework.utils import keras_custom
 from keras.models import Sequential
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.layers.core import Activation, Dense, Flatten, Dropout
@@ -13,9 +14,9 @@ def center_normalize(x):
     return (x - K.mean(x)) / K.std(x)
 
 
-def get_model():
+def conv_model(n_inputs):
     model = Sequential()
-    model.add(Activation(activation=center_normalize, input_shape=(30, 64, 64)))
+    model.add(Activation(activation=center_normalize, input_shape=(n_inputs, 64, 64)))
 
     model.add(Convolution2D(64, 3, 3, border_mode='same'))
     model.add(Activation('relu'))
@@ -47,5 +48,5 @@ def get_model():
     model.add(Dense(1))
 
     adam = Adam(lr=0.0001)
-    model.compile(optimizer=adam, loss='mse')
+    model.compile(optimizer=adam, loss='rmse')
     return model

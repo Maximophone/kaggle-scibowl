@@ -5,12 +5,18 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+import matplotlib.cm as cm
+
+import numpy as np
+
 # import sys
 # # Add the Test Folder path to the sys.path list
 # sys.path.append('C:\Users\Max\Desktop\Dev\Info\kaggle\scibowl\config')
 
 from config import LOCS
 
+def greyplot(img):
+    plt.imshow(img, cmap = cm.Greys_r)
 
 def isint(x):
     try:
@@ -20,11 +26,19 @@ def isint(x):
         return False
 
 class Cache(dict):
-    def load(self,url):
+    def load(self,url,meta=False):
         image = dicom.read_file(url)
-        image = image.pixel_array.astype(float)
-        self[url+'_v0'] = image
-        return image
+        pixels = image.pixel_array.astype(float)
+        metadata = image.data_element
+        self[url+'_v0'] = pixels
+        self['meta_'+url] = metadata
+        if meta: return metadata
+        return pixels
+
+    def reset(self):
+        for k in self.keys():
+            del self[k]
+
 
 _CACHE = Cache()
 
@@ -47,9 +61,16 @@ class ImageGetter(object):
             return self._cache[self._cache_id]
         except KeyError:
             return self._cache.load(self.url)
+
+    @property
+    def meta(self):
+        try:
+            return self._cache['meta_'+self.url]
+        except KeyError:
+            return self._cache.load(self.url,meta=True)
         
     def show(self):
-        plt.imshow(self.pixels)
+        greyplot(self.pixels)
         
     def apply(self,func):
         result = func(self.pixels)
@@ -73,11 +94,15 @@ class Container(dict):
         for v in self.values():
             v.revert(version)
 
+
 class Samples(Container):
-    pass
+    def get_array(self,version=0):
+        return np.array(sum([v.get_array(version=version) for v in self.values()],[]))
 
 class Slices(Container):
-    pass
+    def get_array(self,version=0):
+        imageslist = [v.get_array(version=version) for v in self.values()]
+        return np.array(imageslist)
 
 class Images(Container):
     
@@ -88,11 +113,15 @@ class Images(Container):
         sortedkeys.sort()
         self._sortedkeys = sortedkeys
         return sortedkeys
+
+    @property
+    def imagelist(self):
+        return [self[k].pixels for k in self.sortedkeys]
     
     def anim(self):
         imagelist = [self[k].pixels for k in self.sortedkeys]
         fig = plt.figure()
-        im = plt.imshow(imagelist[0])
+        im = greyplot(imagelist[0])
 
         def updatefig(j):
             im.set_array(imagelist[j])
@@ -109,9 +138,13 @@ class Images(Container):
         fig = plt.figure()
         for i,img in enumerate(imagelist):
             fig.add_subplot(nrows,ncols,i+1).axis('off')
-            plt.imshow(img)
+            greyplot(img)
         plt.subplots_adjust(wspace=0.01,hspace=0.01)
         plt.show()
+
+    def get_array(self,version=0):
+        imagelist = [self[k].pixels for k in self.sortedkeys]
+        return np.array(imagelist)
 
 
 
@@ -130,21 +163,33 @@ class Data(object):
             slices = Slices()
             setattr(self,sname,slices)
             samples[int(sample)]=slices
-            subfolder = folder + '\\' + sample + '\\study'
+            subfolder = folder + '/' + sample + '/study'
             slice_names = [sf for sf in os.listdir(subfolder)]
             for sl in slice_names:
                 images = Images()
                 slname = 's_%s'%sl
                 setattr(slices,slname,images)
                 slices[sl] = images
-                slicefolder = subfolder + '\\' + sl
+                slicefolder = subfolder + '/' + sl
                 image_names = [im for im in os.listdir(slicefolder)]
                 for image in image_names:
                     new_im_name = 'im_%s'%image.split('.')[0].split('-')[2]
-                    url = slicefolder + '\\' + image
+                    url = slicefolder + '/' + image
                     image_getter = ImageGetter(url)
                     setattr(images,new_im_name,image_getter)
                     images[int(new_im_name.split('_')[1])]=image_getter
+
+    def get_array(self,version=0):
+        return self.samples.get_array(version)
+
+    def select_slices(self,func):
+        pass
+
+    def select_samples(self,func):
+        pass
+
+    def select_images(self,func):
+        pass
                     
                 
         

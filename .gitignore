@@ -1,7 +1,10 @@
 *.pyc
-*.sublime-project
-*.sublime-workspace
-notebooks
+*.sublime-project*
+*.sublime-workspace*
+old
 *.ipynb
 *.hdf5
 *.csv
+*.txt
+cache
+submissions
